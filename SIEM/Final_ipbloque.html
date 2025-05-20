@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIEM - IP Bloqués</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #36393f;
+            color: #dcddde;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            background-color: #202225;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #40444b;
+        }
+
+        .nav-menu {
+            margin-top: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background-color: #4f545c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-button:hover {
+            background-color: #5865f2;
+        }
+
+        .nav-button.active {
+            background-color: #5865f2;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .refresh-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .btn-refresh {
+            padding: 8px 15px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            background-color: #43b581;
+        }
+        
+        .btn-refresh:hover {
+            background-color: #3ca374;
+        }
+        
+        .loading {
+            display: none;
+            margin-left: 10px;
+            color: #dcddde;
+        }
+        
+        .ip-counter {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #dcddde;
+        }
+        
+        .action-buttons {
+            display: flex;
+        }
+
+        .filters {
+            margin-bottom: 20px;
+        }
+
+        .filters input, .filters select {
+            padding: 10px;
+            margin-right: 10px;
+            font-size: 14px;
+            border: 1px solid #40444b;
+            background-color: #40444b;
+            color: #dcddde;
+            border-radius: 4px;
+        }
+
+        .filters button {
+            padding: 10px;
+            background-color: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .filters button:hover {
+            background-color: #4752c4;
+        }
+
+        .ip-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .ip-table th, .ip-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #40444b;
+        }
+
+        .ip-table th {
+            background-color: #2f3136;
+            color: white;
+        }
+
+        .ip-table tbody tr:nth-child(even) {
+            background-color: #2f3136;
+        }
+
+        .ip-table tbody tr:nth-child(odd) {
+            background-color: #36393f;
+        }
+
+        .ip-table tbody tr:hover {
+            background-color: #40444b;
+        }
+
+        .btn-logout {
+            background-color: #ed4245;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 30px;
+        }
+
+        .btn-logout:hover {
+            background-color: #c03537;
+        }
+
+        /* Pagination styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            margin: 0 5px;
+            background-color: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination button:hover {
+            background-color: #4752c4;
+        }
+
+        .pagination button.active {
+            background-color: #4752c4;
+            font-weight: bold;
+        }
+
+        .pagination button:disabled {
+            background-color: #4f545c;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            margin: 0 15px;
+            align-self: center;
+            color: #dcddde;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Tableau de bord SIEM - IP Bloqués</h1>
+        <div class="nav-menu">
+            <a href="index.html"><button class="nav-button">Alertes</button></a>
+            <a href="rapports.html"><button class="nav-button">Rapports</button></a>
+            <button class="nav-button active">IP Bloqué</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Refresh Controls -->
+        <div class="refresh-container">
+            <div class="action-buttons">
+                <button class="btn-refresh" onclick="loadBlockedIPs()">
+                    <i class="fas fa-sync-alt"></i> Rafraîchir les données
+                </button>
+                <span class="loading" id="loadingIndicator">
+                    <i class="fas fa-spinner fa-spin"></i> Chargement...
+                </span>
+            </div>
+            <div class="ip-counter">
+                <span id="ipCount">0</span> IP bloquées affichées
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filters">
+            <input type="text" id="searchText" placeholder="Recherche..." oninput="filterIPs()">
+            <input type="text" id="attackedMachineFilter" placeholder="Machine attaquée..." oninput="filterIPs()">
+            <input type="text" id="blockedMachineFilter" placeholder="Machine bloquée..." oninput="filterIPs()">
+            <button onclick="clearFilters()">Réinitialiser les filtres</button>
+        </div>
+
+        <!-- IP Table -->
+        <table class="ip-table" id="ipTable">
+            <thead>
+                <tr>
+                    <th>Machine Attaquée</th>
+                    <th>Machine Bloquée</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table will be populated from CSV file -->
+            </tbody>
+        </table>
+
+        <!-- Pagination Controls -->
+        <div class="pagination" id="pagination">
+            <button id="prevPage" onclick="changePage(-1)" disabled><i class="fas fa-chevron-left"></i> Précédent</button>
+            <div class="pagination-info">Page <span id="currentPage">1</span> sur <span id="totalPages">1</span></div>
+            <button id="nextPage" onclick="changePage(1)" disabled>Suivant <i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Logout Button -->
+        <button class="btn-logout" onclick="window.location.href='login.html'">Se déconnecter</button>
+    </div>
+
+    <script>
+        // Variables pour stocker les données
+        let allBlockedIPs = [];
+        
+        // Variables pour la pagination
+        let currentPage = 1;
+        let rowsPerPage = 10;
+        let filteredIPs = [];
+
+        // Fonction pour charger les IP bloquées depuis le script PHP
+        function loadBlockedIPs() {
+            document.getElementById('loadingIndicator').style.display = 'inline';
+            
+            fetch('blocus.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        allBlockedIPs = data.blocked_ips;
+                        console.log(`${allBlockedIPs.length} IP bloquées récupérées.`);
+                        applyFilters();
+                    } else {
+                        console.error('Erreur:', data.message);
+                        alert('Erreur: ' + data.message);
+                    }
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors du chargement des données');
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                });
+        }
+
+        // Appliquer les filtres actuels
+        function applyFilters() {
+            const searchText = document.getElementById("searchText").value.toLowerCase();
+            const attackedMachineFilter = document.getElementById("attackedMachineFilter").value.toLowerCase();
+            const blockedMachineFilter = document.getElementById("blockedMachineFilter").value.toLowerCase();
+            
+            filteredIPs = allBlockedIPs.filter(ip => {
+                const allText = [
+                    ip.attacked_machine || '', 
+                    ip.blocked_machine || '', 
+                    ip.date || ''
+                ].join(' ').toLowerCase();
+                
+                return (
+                    (allText.includes(searchText) || searchText === "") &&
+                    ((ip.attacked_machine || '').toLowerCase().includes(attackedMachineFilter) || attackedMachineFilter === "") &&
+                    ((ip.blocked_machine || '').toLowerCase().includes(blockedMachineFilter) || blockedMachineFilter === "")
+                );
+            });
+            
+            document.getElementById('ipCount').textContent = filteredIPs.length;
+            updatePagination();
+            displayIPsForCurrentPage();
+        }
+
+        // Mettre à jour les informations de pagination
+        function updatePagination() {
+            const totalPages = Math.max(1, Math.ceil(filteredIPs.length / rowsPerPage));
+            currentPage = Math.min(currentPage, totalPages);
+            
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+            
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+
+        // Changer de page
+        function changePage(delta) {
+            currentPage += delta;
+            displayIPsForCurrentPage();
+            updatePagination();
+            // Faire défiler jusqu'en haut du tableau
+            document.getElementById('ipTable').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Afficher les IP pour la page actuelle
+        function displayIPsForCurrentPage() {
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const displayedIPs = filteredIPs.slice(startIndex, endIndex);
+            
+            const tbody = document.querySelector('#ipTable tbody');
+            tbody.innerHTML = '';
+            
+            if (displayedIPs.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="3" style="text-align: center;">Aucune IP bloquée à afficher</td>';
+                tbody.appendChild(row);
+                return;
+            }
+            
+            displayedIPs.forEach(ip => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ip.attacked_machine || '-'}</td>
+                    <td>${ip.blocked_machine || '-'}</td>
+                    <td>${ip.date || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Filtrer les IP
+        function filterIPs() {
+            currentPage = 1; // Reset to first page when filtering
+            applyFilters();
+        }
+
+        // Effacer tous les filtres
+        function clearFilters() {
+            document.getElementById("searchText").value = '';
+            document.getElementById("attackedMachineFilter").value = '';
+            document.getElementById("blockedMachineFilter").value = '';
+            filterIPs();
+        }
+
+        // Charger les données au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBlockedIPs();
+            
+            // Ajouter un rafraîchissement automatique des données toutes les 5 minutes
+            setInterval(loadBlockedIPs, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>
