@@ -1,0 +1,57 @@
+#!/bin/bash
+
+red='\e[31m'
+orange='\e[33m'
+reset_color='\e[0m'
+
+clear
+printf "$red"
+figlet -f slant "SAURON"
+printf "$reset_color\n"
+
+echo -e "${orange}#######################################${reset_color}"
+echo -e "${orange}#         INITIALIZATION...           #${reset_color}"
+echo -e "${orange}#######################################${reset_color}\n"
+
+sleep 2
+
+echo -e "${orange}#######################################${reset_color}"
+echo -e "${orange}#         CLEANING FILES...           #${reset_color}"
+echo -e "${orange}#######################################${reset_color}\n"
+
+flushids
+
+sleep 2
+
+echo -e "${orange}#######################################${reset_color}"
+echo -e "${orange}#       ACTIVATING VIRTUAL ENV...     #${reset_color}"
+echo -e "${orange}#######################################${reset_color}\n"
+
+source /opt/ids/bin/activate
+
+sleep 2
+
+echo -e "${orange}#######################################${reset_color}"
+echo -e "${orange}#       STARTING IDS/IPS SERVICES     #${reset_color}"
+echo -e "${orange}#######################################${reset_color}\n"
+
+python3 /opt/ids/SIDS.py > /dev/null &
+PID1=$!
+python3 /opt/ids/NIDS.py > /dev/null &
+PID2=$!
+python3 /opt/ids/send_alerts.py > /dev/null &
+PID3=$!
+python3 /opt/ids/IPS.py &
+PID4=$!
+
+echo -e "${orange}#######################################${reset_color}"
+echo -e "${orange}#         SAURON IS LISTENING...      #${reset_color}"
+echo -e "${orange}#######################################${reset_color}\n"
+
+tail -n0 -f /opt/ids/alertessiem.csv &
+PID_TAIL=$!
+
+
+trap "kill $PID1 $PID2 $PID3 $PID4 $PID_TAIL; exit" SIGINT SIGTERM
+
+wait
